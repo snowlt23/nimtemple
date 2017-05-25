@@ -4,6 +4,13 @@
 {{ include "header.html" }}
 <ul>
 {{ for person in persons }}
-  <li>${person.name}</li>
+  <li>
+    {{ if isHello }}
+      Hello
+    {{ else }}
+      See you
+    {{ end }}
+    ${person.name}
+  </li>
 {{ end }}
 </ul>

@@ -9,4 +9,5 @@ tmpl["persons"] = %* [
   {"name": "akane"},
   {"name": "aoi"},
 ]
+tmpl["isHello"] = %* true
 echo tmpl.render(readFile("./template_example.html"))

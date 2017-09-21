@@ -72,35 +72,43 @@ proc saveToTempleStmt*[N](rule: Rule[N]): Rule[N] =
 grammar(TempleNode):
   ident := (chr(IdentStartChars) and *chr(IdentChars)).save do (match: string) -> TempleNode:
     TempleNode(kind: templeStr, strval: match)
-  ig := *str(" ")
-  ws := +str(" ")
   filename := (str("\"") and *(absent(str("\"")) and chr(AllChars)) and str("\"")).save do (match: string) -> TempleNode:
     TempleNode(kind: templeStr, strval: match.replace("\""))
+  ig := *str(" ")
+  ws := +str(" ")
+
   extendsPattern := (str("{{") and ig and str("extends") and ws and filename and ig and str("}}")).save do (matches: seq[TempleNode]) -> TempleNode:
     TempleNode(kind: templeExtends, filename: matches[0])
   includePattern := (str("{{") and ig and str("include") and ws and filename and ig and str("}}")).save do (matches: seq[TempleNode]) -> TempleNode:
     TempleNode(kind: templeInclude, filename: matches[0])
   contentPattern := (str("{{") and ig and str("content") and ig and str("}}")).save do (matches: seq[TempleNode]) -> TempleNode:
     TempleNode(kind: templeContent)
+
   valuePattern := (ident and *(str(".") and ident)).save do (matches: seq[TempleNode]) -> TempleNode:
     TempleNode(kind: templeValue, dotvals: matches.mapIt($it))
   embedPattern := (str("${") and ig and valuePattern and ig and str("}")).save do (match: seq[TempleNode]) -> TempleNode:
     TempleNode(kind: templeEmbed, embedvalue: match[0])
+
+  statementPattern := embedPattern or includePattern or forPattern or ifElsePattern or ifPattern
+
   forBodyPattern := (+(absent(statementPattern or endPattern) and chr(AllChars))).save do (match: string) -> TempleNode:
     TempleNode(kind: templeStr, strval: match)
-  ifBodyPattern := (+(absent(statementPattern or elsePattern or endPattern) and chr(AllChars))).save do (match: string) -> TempleNode:
-    TempleNode(kind: templeStr, strval: match)
-  statementPattern := embedPattern or includePattern or forPattern or ifElsePattern or ifPattern
   forPattern := (str("{{") and ig and str("for") and ws and ident and ws and str("in") and ws and valuePattern and
     ig and str("}}") and saveToTempleStmt(*(statementPattern or forBodyPattern)) and endPattern).save do (matches: seq[TempleNode]) -> TempleNode:
       TempleNode(kind: templeFor, elemname: matches[0], itervalue: matches[1], content: matches[2])
+
+  # if
+  ifBodyPattern := (+(absent(statementPattern or elsePattern or endPattern) and chr(AllChars))).save do (match: string) -> TempleNode:
+    TempleNode(kind: templeStr, strval: match)
   ifHeadPattern := (str("{{") and ig and str("if") and ws and valuePattern and ig and str("}}"))
   ifPattern := (ifHeadPattern and saveToTempleStmt(*(statementPattern or ifBodyPattern)) and endPattern).save do (matches: seq[TempleNode]) -> TempleNode:
     TempleNode(kind: templeIf, sons: matches)
   ifElsePattern := (ifHeadPattern and saveToTempleStmt(*(statementPattern or ifBodyPattern)) and elsePattern and saveToTempleStmt(*(statementPattern or ifBodyPattern)) and endPattern).save do (matches: seq[TempleNode]) -> TempleNode:
     TempleNode(kind: templeIfElse, cond: matches[0], tcontent: matches[1], fcontent: matches[2])
   elsePattern := str("{{") and ig and str("else") and ig and str("}}")
+
   endPattern := str("{{") and ig and str("end") and ig and str("}}")
+
   otherPattern := (+(absent(statementPattern) and chr(AllChars))).save do (match: string) -> TempleNode:
     TempleNode(kind: templeStr, strval: match)
   topPattern := *(statementPattern or otherPattern)

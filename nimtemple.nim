@@ -7,16 +7,18 @@ export json
 import strutils
 
 type
-  TemplateRenderer* = object
+  TempleRenderer* = object
     obj: JsonNode
 
-proc newTemplateRenderer*(): TemplateRenderer =
+proc newTempleRenderer*(): TempleRenderer =
   result.obj = newJObject()
-proc `[]`*(tmpl: TemplateRenderer, key: string): JsonNode =
+
+proc `[]`*(tmpl: TempleRenderer, key: string): JsonNode =
   tmpl.obj[key]
-proc `[]=`*(tmpl: TemplateRenderer, key: string, val: JsonNode) =
+proc `[]=`*(tmpl: TempleRenderer, key: string, val: JsonNode) =
   tmpl.obj[key] = val
-proc getVal*(tmpl: TemplateRenderer, key: TempleNode): JsonNode =
+
+proc getVal*(tmpl: TempleRenderer, key: TempleNode): JsonNode =
   if key.kind == templeStr:
     return tmpl[$key]
   elif key.kind == templeValue:
@@ -26,7 +28,8 @@ proc getVal*(tmpl: TemplateRenderer, key: TempleNode): JsonNode =
     return val
   else:
     raise newException(TempleError, "couldn't find variable: $#" % $key)
-proc eval*(tmpl: TemplateRenderer, node: TempleNode): string =
+
+proc eval*(tmpl: TempleRenderer, node: TempleNode): string =
   case node.kind
   of templeStr:
     $node
@@ -59,11 +62,12 @@ proc eval*(tmpl: TemplateRenderer, node: TempleNode): string =
       tmpl.eval(node.fcontent)
   else:
     ""
-proc renderSrc*(tmpl: TemplateRenderer, filename: string, src: string): string =
+
+proc renderSrc*(tmpl: TempleRenderer, filename: string, src: string): string =
   result = ""
   for node in parseTemple(filename, src):
     result &= tmpl.eval(node)
-proc renderFile*(tmpl: TemplateRenderer, filename: string): string =
+proc renderFile*(tmpl: TempleRenderer, filename: string): string =
   result = ""
   for node in parseTemple(filename, readFile(filename)):
     result &= tmpl.eval(node)

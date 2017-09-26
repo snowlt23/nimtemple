@@ -65,9 +65,10 @@ proc eval*(tmpl: TempleRenderer, node: TempleNode): string =
 
 proc renderSrc*(tmpl: TempleRenderer, filename: string, src: string): string =
   result = ""
-  for node in parseTemple(filename, src):
+  for node in parseTemple(filename, src).sons:
     result &= tmpl.eval(node)
 proc renderFile*(tmpl: TempleRenderer, filename: string): string =
   result = ""
-  for node in parseTemple(filename, readFile(filename)):
+  for node in parseTemple(filename, readFile(filename)).sons:
     result &= tmpl.eval(node)
+

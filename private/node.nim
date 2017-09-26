@@ -34,7 +34,7 @@ type
     of templeContent:
       discard
     of templeFor:
-      elemname*: TempleNode
+      elemname*: string
       itervalue*: TempleNode
       content*: TempleNode
     of templeIf, templeIfElse:

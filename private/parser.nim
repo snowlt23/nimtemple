@@ -49,7 +49,30 @@ proc getSpan*(ctx: var ParserContext): Span =
 # parse
 #
 
+proc parseError*(span: Span, msg: string) =
+  raise newException(TempleError, "$#($#:$#): $#" % [span.filename, $span.line, $span.linepos, msg])
+
+proc parseExpr*(ctx: var ParserContext): TempleNode
+proc parseStmt*(ctx: var ParserContext): TempleNode
+
+proc parseIdent*(ctx: var ParserContext): string =
+  result = ""
+  while true:
+    if ctx.getchar in {' ', '}', LF}:
+      break
+    else:
+      result.add(ctx.getchar)
+      ctx.next()
+
+proc checkEndBrackets*(ctx: var ParserContext) =
+  ctx.skipGarbage()
+  if ctx.get(2) != "}}":
+    parseError(ctx.getSpan, "unmatching brackets")
+  ctx.next(2)
+
 proc parseValue*(ctx: var ParserContext): TempleNode =
+  if ctx.getchar != '$':
+    parseError(ctx.getSpan, "iterator is not variable: requires `$`")
   ctx.next(1)
   var names = newSeq[string]()
   var curstr = ""
@@ -59,8 +82,7 @@ proc parseValue*(ctx: var ParserContext): TempleNode =
     if ctx.getchar == '.':
       names.add(curstr)
       curstr = ""
-    elif ctx.get(2) == "}}":
-      ctx.next(2)
+    elif ctx.getchar in {' ', '}'}:
       break
     else:
       curstr &= ctx.getchar
@@ -68,29 +90,52 @@ proc parseValue*(ctx: var ParserContext): TempleNode =
   names.add(curstr)
   return TempleNode(span: span, kind: templeValue, names: names)
 
+proc parseFor*(ctx: var ParserContext): TempleNode =
+  let span = ctx.getSpan
+  ctx.next(3)
+  ctx.skipGarbage()
+  let ident = ctx.parseIdent()
+  ctx.skipGarbage()
+  if ctx.get(2) != "in":
+    raise newException(TempleError, "")
+  ctx.next(2)
+  ctx.skipGarbage()
+  let value = ctx.parseValue()
+  ctx.checkEndBrackets()
+  let body = ctx.parseStmt()
+  return TempleNode(span: span, kind: templeFor, elemname: ident, itervalue: value, content: body)
+
 proc parseExpr*(ctx: var ParserContext): TempleNode =
   if ctx.get(1) == "$":
-    return ctx.parseValue()
+    result = ctx.parseValue()
+    ctx.checkEndBrackets()
+  elif ctx.get(3) == "for":
+    return ctx.parseFor()
   else:
-    raise newException(TempleError, "unknown expression")
+    parseError(ctx.getSpan, "unknown expression")
 
-proc parseStmt*(ctx: var ParserContext): seq[TempleNode] =
-  result = @[]
+proc parseStmt*(ctx: var ParserContext): TempleNode =
+  var body = newSeq[TempleNode]()
   var curstr = ""
   var curspan = ctx.getSpan()
   while not ctx.iseof:
     if ctx.get(2) == "{{":
-      result.add(TempleNode(span: curspan, kind: templeStr, strval: curstr))
       ctx.next(2)
       ctx.skipGarbage()
-      result.add(ctx.parseExpr())
+      if ctx.get(3) == "end":
+        ctx.next(3)
+        ctx.checkEndBrackets()
+        break
+      body.add(TempleNode(span: curspan, kind: templeStr, strval: curstr))
+      body.add(ctx.parseExpr())
       curstr = ""
       curspan = ctx.getSpan()
     else:
       curstr &= ctx.get(1)
       ctx.next(1)
-  result.add(TempleNode(span: curspan, kind: templeStr, strval: curstr))
+  body.add(TempleNode(span: curspan, kind: templeStr, strval: curstr))
+  return TempleNode(span: body[0].span, kind: templeStmt, sons: body)
 
-proc parseTemple*(filename: string, src: string): seq[TempleNode] =
+proc parseTemple*(filename: string, src: string): TempleNode =
   var ctx = newParserContext(filename, src)
   return ctx.parseStmt()

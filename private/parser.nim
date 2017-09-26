@@ -66,7 +66,6 @@ macro parseseq*(ctx: typed, body: untyped): untyped =
 proc parseError*(span: Span, msg: string) =
   raise newException(TempleParseError, "$#($#:$#): $#" % [span.filename, $span.line, $span.linepos, msg])
 
-proc parseExpr*(ctx: var ParserContext): TempleNode
 proc parseStmt*(ctx: var ParserContext): TempleNode
 
 proc parseIdent*(ctx: var ParserContext): string =
@@ -130,7 +129,7 @@ proc parseIf*(ctx: var ParserContext): TempleNode =
       fcontent = ctx.parseStmt()
   return TempleNode(span: span, kind: templeIf, cond: cond, tcontent: tcontent, fcontent: fcontent)
 
-proc parseExpr*(ctx: var ParserContext): TempleNode =
+proc parseBlock*(ctx: var ParserContext): TempleNode =
   if ctx.get(1) == "$":
     result = ctx.parseValue()
     ctx.checkEndBrackets()
@@ -156,7 +155,7 @@ proc parseStmt*(ctx: var ParserContext): TempleNode =
       elif ctx.get(4) == "else":
         break
       body.add(TempleNode(span: curspan, kind: templeStr, strval: curstr))
-      body.add(ctx.parseExpr())
+      body.add(ctx.parseBlock())
       curstr = ""
       curspan = ctx.getSpan()
     else:

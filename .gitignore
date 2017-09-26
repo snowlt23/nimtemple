@@ -2,12 +2,6 @@
 nimcache/
 nimsuggest.log
 
-nimtemple_test.exe
-nimtemple_test
-nimtemple_value.exe
-nimtemple_value
-nimtemple_for.exe
-nimtemple_for
-nimtemple_if.exe
-nimtemple_if
+tester
+tester.exe
 

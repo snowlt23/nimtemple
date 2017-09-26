@@ -54,11 +54,6 @@ proc eval*(tmpl: TempleRenderer, node: TempleNode): string =
     if tmpl.getVal(node.cond).bval:
       tmpl.eval(node.tcontent)
     else:
-      ""
-  of templeIfElse:
-    if tmpl.getVal(node.cond).bval:
-      tmpl.eval(node.tcontent)
-    else:
       tmpl.eval(node.fcontent)
   else:
     ""

@@ -1,6 +1,7 @@
 
 import node
 
+import macros
 import strutils
 
 const LF* = '\x0A'
@@ -49,8 +50,21 @@ proc getSpan*(ctx: var ParserContext): Span =
 # parse
 #
 
+macro parseseq*(ctx: typed, body: untyped): untyped =
+  result = newStmtList()
+  for b in body:
+    if b.kind == nnkStrLit:
+      result.add quote do:
+        if `ctx`.get(`b`.len) != `b`:
+          parseError(`ctx`.getSpan, "unmatching " & `b`)
+        `ctx`.next(`b`.len)
+    else:
+      result.add(b)
+    result.add quote do:
+      `ctx`.skipGarbage()
+
 proc parseError*(span: Span, msg: string) =
-  raise newException(TempleError, "$#($#:$#): $#" % [span.filename, $span.line, $span.linepos, msg])
+  raise newException(TempleParseError, "$#($#:$#): $#" % [span.filename, $span.line, $span.linepos, msg])
 
 proc parseExpr*(ctx: var ParserContext): TempleNode
 proc parseStmt*(ctx: var ParserContext): TempleNode
@@ -72,7 +86,7 @@ proc checkEndBrackets*(ctx: var ParserContext) =
 
 proc parseValue*(ctx: var ParserContext): TempleNode =
   if ctx.getchar != '$':
-    parseError(ctx.getSpan, "iterator is not variable: requires `$`")
+    parseError(ctx.getSpan, "not variable: requires `$`")
   ctx.next(1)
   var names = newSeq[string]()
   var curstr = ""
@@ -92,18 +106,29 @@ proc parseValue*(ctx: var ParserContext): TempleNode =
 
 proc parseFor*(ctx: var ParserContext): TempleNode =
   let span = ctx.getSpan
-  ctx.next(3)
-  ctx.skipGarbage()
-  let ident = ctx.parseIdent()
-  ctx.skipGarbage()
-  if ctx.get(2) != "in":
-    raise newException(TempleError, "")
-  ctx.next(2)
-  ctx.skipGarbage()
-  let value = ctx.parseValue()
-  ctx.checkEndBrackets()
-  let body = ctx.parseStmt()
+  ctx.parseseq:
+    "for"
+    let ident = ctx.parseIdent()
+    "in"
+    let value = ctx.parseValue()
+    ctx.checkEndBrackets()
+    let body = ctx.parseStmt()
   return TempleNode(span: span, kind: templeFor, elemname: ident, itervalue: value, content: body)
+
+proc parseIf*(ctx: var ParserContext): TempleNode =
+  let span = ctx.getSpan
+  ctx.parseseq:
+    "if"
+    let cond = ctx.parseValue()
+    ctx.checkEndBrackets()
+    let tcontent = ctx.parseStmt()
+  var fcontent = TempleNode(span: span, kind: templeStr, strval: "")
+  if ctx.get(4) == "else":
+    ctx.parseseq:
+      "else"
+      ctx.checkEndBrackets()
+      fcontent = ctx.parseStmt()
+  return TempleNode(span: span, kind: templeIf, cond: cond, tcontent: tcontent, fcontent: fcontent)
 
 proc parseExpr*(ctx: var ParserContext): TempleNode =
   if ctx.get(1) == "$":
@@ -111,6 +136,8 @@ proc parseExpr*(ctx: var ParserContext): TempleNode =
     ctx.checkEndBrackets()
   elif ctx.get(3) == "for":
     return ctx.parseFor()
+  elif ctx.get(2) == "if":
+    return ctx.parseIf()
   else:
     parseError(ctx.getSpan, "unknown expression")
 
@@ -125,6 +152,8 @@ proc parseStmt*(ctx: var ParserContext): TempleNode =
       if ctx.get(3) == "end":
         ctx.next(3)
         ctx.checkEndBrackets()
+        break
+      elif ctx.get(4) == "else":
         break
       body.add(TempleNode(span: curspan, kind: templeStr, strval: curstr))
       body.add(ctx.parseExpr())

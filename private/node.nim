@@ -3,6 +3,7 @@ import sequtils, strutils
 
 type
   TempleError* = object of Exception
+  TempleParseError* = object of Exception
   Span* = object
     filename*: string
     line*: int
@@ -17,7 +18,6 @@ type
     templeContent
     templeFor
     templeIf
-    templeIfElse
   TempleNode* = ref object
     span*: Span
     case kind*: TempleNodeKind
@@ -37,7 +37,7 @@ type
       elemname*: string
       itervalue*: TempleNode
       content*: TempleNode
-    of templeIf, templeIfElse:
+    of templeIf:
       cond*: TempleNode
       tcontent*: TempleNode
       fcontent*: TempleNode
@@ -61,8 +61,4 @@ proc `$`*(node: TempleNode): string =
   of templeFor:
     "(kind: templeFor, elemname: $#, itervalue: $#, content: $#)" % [$node.elemname, $node.itervalue, $node.content]
   of templeIf:
-    "(kind: templeIf, cond: $#, tcontent: $#)" % [$node.cond, $node.tcontent]
-  of templeIfElse:
     "(kind: templeIf, cond: $#, tcontent: $#, fcontent: $#)" % [$node.cond, $node.tcontent, $node.fcontent]
-  else:
-    ""

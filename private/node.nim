@@ -12,7 +12,7 @@ type
     templeStr
     templeValue
     templeStmt
-    templeEmbed
+    templeDefine
     templeExtends
     templeInclude
     templeContent
@@ -27,8 +27,9 @@ type
       names*: seq[string]
     of templeStmt:
       sons*: seq[TempleNode]
-    of templeEmbed:
-      embedvalue*: TempleNode
+    of templeDefine:
+      definename*: string
+      definecontent*: TempleNode
     of templeExtends, templeInclude:
       filename*: TempleNode
     of templeContent:
@@ -50,8 +51,8 @@ proc `$`*(node: TempleNode): string =
     node.names.join(".")
   of templeStmt:
     "(kind: templeStmt, sons: $#)" % $node.sons
-  of templeEmbed:
-    "(kind: templeEmbed, embedvalue: $#)" % $node.embedvalue
+  of templeDefine:
+    "(kind: templeDefine, definename: $#, definecontent: $#)" % [$node.definename, $node.definecontent]
   of templeExtends:
     "(kind: templeExtends, filename: $#)" % node.filename.strval
   of templeInclude:

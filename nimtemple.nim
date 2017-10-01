@@ -5,13 +5,20 @@ import private.parser
 import json
 export json
 import strutils
+import tables
+import options
+import os
 
 type
   TempleRenderer* = object
+    basepath*: string
     obj: JsonNode
+    defines: Table[string, string]
+    parentnodes: Option[TempleNode]
 
 proc newTempleRenderer*(): TempleRenderer =
   result.obj = newJObject()
+  result.defines = initTable[string, string]()
 
 proc `[]`*(tmpl: TempleRenderer, key: string): JsonNode =
   tmpl.obj[key]
@@ -29,7 +36,7 @@ proc getVal*(tmpl: TempleRenderer, key: TempleNode): JsonNode =
   else:
     raise newException(TempleError, "couldn't find variable: $#" % $key)
 
-proc eval*(tmpl: TempleRenderer, node: TempleNode): string =
+proc eval*(tmpl: var TempleRenderer, node: TempleNode): string =
   case node.kind
   of templeStr:
     $node
@@ -40,8 +47,15 @@ proc eval*(tmpl: TempleRenderer, node: TempleNode): string =
     s
   of templeValue:
     tmpl.getVal(node).str
-  of templeEmbed:
-    tmpl.getVal(node.embedvalue).str
+  of templeExtends:
+    tmpl.parentnodes = some parseTemple(tmpl.basepath / node.filename.strval, readFile(tmpl.basepath / node.filename.strval))
+    ""
+  of templeDefine:
+    if tmpl.defines.hasKey(node.definename):
+      tmpl.defines[node.definename]
+    else:
+      tmpl.defines[node.definename] = tmpl.eval(node.definecontent)
+      ""
   of templeInclude:
     readFile($node.filename)
   of templeFor:
@@ -58,12 +72,12 @@ proc eval*(tmpl: TempleRenderer, node: TempleNode): string =
   else:
     ""
 
-proc renderSrc*(tmpl: TempleRenderer, filename: string, src: string): string =
-  result = ""
-  for node in parseTemple(filename, src).sons:
-    result &= tmpl.eval(node)
-proc renderFile*(tmpl: TempleRenderer, filename: string): string =
-  result = ""
-  for node in parseTemple(filename, readFile(filename)).sons:
-    result &= tmpl.eval(node)
+proc renderSrc*(tmpl: var TempleRenderer, filename: string, src: string): string =
+  tmpl.basepath = filename.splitPath().head
+  let node = parseTemple(filename, src)
+  result = tmpl.eval(node)
+  if tmpl.parentnodes.isSome:
+    result = tmpl.eval(tmpl.parentnodes.get)
+proc renderFile*(tmpl: var TempleRenderer, filename: string): string =
+  tmpl.renderSrc(filename, readFile(filename))
 

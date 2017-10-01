@@ -16,7 +16,7 @@ type
     defines: Table[string, string]
     parentnodes: Option[TempleNode]
 
-proc newTempleRenderer*(): TempleRenderer =
+proc initTempleRenderer*(): TempleRenderer =
   result.obj = newJObject()
   result.defines = initTable[string, string]()
 

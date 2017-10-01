@@ -3,7 +3,7 @@ import unittest
 import nimtemple
 
 suite "nimtemple":
-  var tmpl = newTempleRenderer()
+  var tmpl = initTempleRenderer()
   tmpl["heroine"] = %* "Yuduki Yukari"
   tmpl["persons"] = %* ["Yukari", "Maki", "Akane", "Aoi"]
 
@@ -31,7 +31,7 @@ Kotonoha Akane
     tmpl["islittle"] = %* false
     check tmpl.renderSrc("test", src) == "Kotonoha Akane\n"
   test "extends":
-    var tmpl = newTempleRenderer()
+    var tmpl = initTempleRenderer()
     check tmpl.renderFile("test/extends.html") == """
 
 <title>ZUNDA</title>

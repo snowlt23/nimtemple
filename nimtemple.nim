@@ -26,20 +26,20 @@ proc `[]=`*(tmpl: TempleRenderer, key: string, val: JsonNode) =
   tmpl.obj[key] = val
 
 proc getVal*(tmpl: TempleRenderer, key: TempleNode): JsonNode =
-  if key.kind == templeStr:
-    return tmpl[$key]
+  if key.kind == templeStrLit:
+    return tmpl[key.strval]
   elif key.kind == templeValue:
     var val = tmpl[key.names[0]]
     for k in key.names[1..^1]:
       val = val[k]
     return val
   else:
-    raise newException(TempleError, "couldn't find variable: $#" % $key)
+    raise newException(TempleError, "couldn't find variable: $#" % key.debug)
 
 proc eval*(tmpl: var TempleRenderer, node: TempleNode): string =
   case node.kind
-  of templeStr:
-    $node
+  of templeStrLit:
+    "\"" & node.strval & "\""
   of templeStmt:
     var s = ""
     for elem in node.sons:
@@ -57,20 +57,22 @@ proc eval*(tmpl: var TempleRenderer, node: TempleNode): string =
       tmpl.defines[node.definename] = tmpl.eval(node.definecontent)
       ""
   of templeInclude:
-    readFile($node.filename)
+    readFile(node.filename.strval)
+  of templeContent:
+    node.content
+  of templeStrip:
+    tmpl.eval(node.stripnode).strip()
   of templeFor:
     var s = ""
     for elem in tmpl.getVal(node.itervalue):
       tmpl[$node.elemname] = elem
-      s &= tmpl.eval(node.content)
+      s &= tmpl.eval(node.forcontent)
     s
   of templeIf:
     if tmpl.getVal(node.cond).bval:
       tmpl.eval(node.tcontent)
     else:
       tmpl.eval(node.fcontent)
-  else:
-    ""
 
 proc renderSrc*(tmpl: var TempleRenderer, filename: string, src: string): string =
   tmpl.basepath = filename.splitPath().head

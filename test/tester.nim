@@ -34,8 +34,7 @@ Kotonoha Akane
     var tmpl = newTempleRenderer()
     check tmpl.renderFile("test/extends.html") == """
 
-<title>ZUNDA
-</title>
+<title>ZUNDA</title>
 
 """
 

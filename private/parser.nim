@@ -54,6 +54,7 @@ proc parseError*(span: Span, msg: string) =
   raise newException(TempleParseError, "$#($#:$#): $#" % [span.filename, $span.line, $span.linepos, msg])
 
 proc expect*(ctx: var ParserContext, s: string) =
+  ctx.skipGarbage()
   if ctx.get(s.len) != s:
     parseError(ctx.getSpan, "unmatching: requires `$#`" % s)
   ctx.next(s.len)
@@ -64,13 +65,13 @@ proc istoken*(ctx: var ParserContext, s: string): bool =
 macro parseseq*(ctx: typed, body: untyped): untyped =
   result = newStmtList()
   for b in body:
+    result.add quote do:
+      `ctx`.skipGarbage()
     if b.kind == nnkStrLit:
       result.add quote do:
         `ctx`.expect(`b`)
     else:
       result.add(b)
-    result.add quote do:
-      `ctx`.skipGarbage()
 
 proc parseStmt*(ctx: var ParserContext): TempleNode
 
@@ -80,6 +81,7 @@ proc parseStmt*(ctx: var ParserContext): TempleNode
 
 proc parseIdent*(ctx: var ParserContext): string =
   result = ""
+  ctx.skipGarbage()
   while true:
     if ctx.getchar in {' ', '}', LF}:
       break
@@ -87,7 +89,8 @@ proc parseIdent*(ctx: var ParserContext): string =
       result.add(ctx.getchar)
       ctx.next()
 
-proc parseStr*(ctx: var ParserContext): TempleNode =
+proc parseStrLit*(ctx: var ParserContext): TempleNode =
+  ctx.skipGarbage()
   let span = ctx.getSpan
   ctx.expect("\"")
   var s = ""
@@ -98,7 +101,7 @@ proc parseStr*(ctx: var ParserContext): TempleNode =
     else:
       s.add(ctx.getchar)
       ctx.next()
-  return TempleNode(span: span, kind: templeStr, strval: s)
+  return TempleNode(span: span, kind: templeStrLit, strval: s)
 
 proc checkEndBrackets*(ctx: var ParserContext) =
   ctx.skipGarbage()
@@ -107,6 +110,7 @@ proc checkEndBrackets*(ctx: var ParserContext) =
   ctx.next(2)
 
 proc parseValue*(ctx: var ParserContext): TempleNode =
+  ctx.skipGarbage()
   if ctx.getchar != '$':
     parseError(ctx.getSpan, "not variable: requires `$`")
   ctx.next(1)
@@ -139,7 +143,7 @@ proc parseFor*(ctx: var ParserContext): TempleNode =
     let value = ctx.parseValue()
     ctx.checkEndBrackets()
     let body = ctx.parseStmt()
-  return TempleNode(span: span, kind: templeFor, elemname: ident, itervalue: value, content: body)
+  return TempleNode(span: span, kind: templeFor, elemname: ident, itervalue: value, forcontent: body)
 
 proc parseIf*(ctx: var ParserContext): TempleNode =
   let span = ctx.getSpan
@@ -148,7 +152,7 @@ proc parseIf*(ctx: var ParserContext): TempleNode =
     let cond = ctx.parseValue()
     ctx.checkEndBrackets()
     let tcontent = ctx.parseStmt()
-  var fcontent = TempleNode(span: span, kind: templeStr, strval: "")
+  var fcontent = TempleNode(span: span, kind: templeContent, content: "")
   if ctx.get(4) == "else":
     ctx.parseseq:
       "else"
@@ -160,7 +164,7 @@ proc parseExtends*(ctx: var ParserContext): TempleNode =
   let span = ctx.getSpan
   ctx.parseseq:
     "extends"
-    let filename = ctx.parseStr()
+    let filename = ctx.parseStrLit()
     ctx.checkEndBrackets()
   return TempleNode(span: span, kind: templeExtends, filename: filename)
 
@@ -174,7 +178,11 @@ proc parseDefine*(ctx: var ParserContext): TempleNode =
   return TempleNode(span: span, kind: templeDefine, definename: definename, definecontent: content)
 
 proc parseBlock*(ctx: var ParserContext): TempleNode =
-  if ctx.istoken("$"):
+  ctx.skipGarbage()
+  if ctx.istoken("-"):
+    ctx.next()
+    return TempleNode(span: ctx.getSpan, kind: templeStrip, stripnode: ctx.parseBlock())
+  elif ctx.istoken("$"):
     result = ctx.parseValue()
     ctx.checkEndBrackets()
   elif ctx.istoken("for"):
@@ -202,14 +210,14 @@ proc parseStmt*(ctx: var ParserContext): TempleNode =
         break
       elif ctx.get(4) == "else":
         break
-      body.add(TempleNode(span: curspan, kind: templeStr, strval: curstr))
+      body.add(TempleNode(span: curspan, kind: templeContent, content: curstr))
       body.add(ctx.parseBlock())
       curstr = ""
       curspan = ctx.getSpan()
     else:
       curstr &= ctx.get(1)
       ctx.next(1)
-  body.add(TempleNode(span: curspan, kind: templeStr, strval: curstr))
+  body.add(TempleNode(span: curspan, kind: templeContent, content: curstr))
   return TempleNode(span: body[0].span, kind: templeStmt, sons: body)
 
 proc parseTemple*(filename: string, src: string): TempleNode =

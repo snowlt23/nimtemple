@@ -8,22 +8,30 @@ Syntax is Jinja and Go template like.
 
 # Syntax
 
-### value
+### variable
 ```
-{{ $value }}
+{{ $varname }}
 ```
 
 ### if
 ```
-{{ if $boolvalue }}
+{{ if $boolvar }}
 content
 {{ end }}
 ```
 
 ### for
 ```
-{{ for elem in $seqvalue }}
+{{ for elem in $seqvar }}
 <li>{{ $elem }}</li>
+{{ end }}
+```
+
+
+### strip
+```
+{{ - if $boolvar }}
+DO IT
 {{ end }}
 ```
 
@@ -36,7 +44,7 @@ ZUNDA
 {{ end }}
 
 <!-- parent.html -->
-<title>{{ define title }}{{ end }}</title>
+<title>{{ - define title }}{{ end }}</title>
 
 <!-- output => -->
 <title>ZUNDA</title>

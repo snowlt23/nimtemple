@@ -16,7 +16,9 @@ Syntax is Jinja and Go template like.
 ### if
 ```
 {{ if $boolvar }}
-content
+TRUE!
+{{ else }}
+FALSE!
 {{ end }}
 ```
 

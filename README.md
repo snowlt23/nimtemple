@@ -68,6 +68,6 @@ nimble install https://github.com/snowlt23/nimtemple
 ```
 var tmpl = initTempleRenderer()
 tmpl["persons"] = %* ["Yukari", "Maki", "Akane", "Aoi"]
-tmpl.renderFile("for.html")
+echo tmpl.renderFile("for.html")
 ```
 

@@ -57,6 +57,12 @@ ZUNDA
 {{ include "header.html" }}
 ```
 
+### function call
+```
+{{ default($wtf, "DEFALUT!") }}
+```
+
+
 # Install
 
 ```

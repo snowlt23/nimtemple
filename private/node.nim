@@ -19,6 +19,7 @@ type
     templeStrip
     templeFor
     templeIf
+    templeCall
   TempleNode* = ref object
     span*: Span
     case kind*: TempleNodeKind
@@ -45,6 +46,9 @@ type
       cond*: TempleNode
       tcontent*: TempleNode
       fcontent*: TempleNode
+    of templeCall:
+      callname*: string
+      args*: seq[TempleNode]
 
 proc debug*(node: TempleNode): string =
   case node.kind
@@ -68,3 +72,6 @@ proc debug*(node: TempleNode): string =
     "(kind: templeFor, elemname: $#, itervalue: $#, forcontent: $#)" % [$node.elemname, node.itervalue.debug, node.forcontent.debug]
   of templeIf:
     "(kind: templeIf, cond: $#, tcontent: $#, fcontent: $#)" % [node.cond.debug, node.tcontent.debug, node.fcontent.debug]
+  of templeCall:
+    "(kind: templeIf, callname: $#, args: $#)" % [node.callname, $node.args.mapIt(it.debug)]
+

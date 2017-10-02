@@ -5,6 +5,7 @@ import macros
 import strutils
 
 const LF* = '\x0A'
+const separateToken* = {' ', '{', '}', LF, '(', ')'}
 
 type
   ParserContext* = object
@@ -74,6 +75,7 @@ macro parseseq*(ctx: typed, body: untyped): untyped =
       result.add(b)
 
 proc parseStmt*(ctx: var ParserContext): TempleNode
+proc parseValue*(ctx: var ParserContext): TempleNode
 
 #
 # atomic parser
@@ -83,7 +85,7 @@ proc parseIdent*(ctx: var ParserContext): string =
   result = ""
   ctx.skipGarbage()
   while true:
-    if ctx.getchar in {' ', '}', LF}:
+    if ctx.getchar in separateToken:
       break
     else:
       result.add(ctx.getchar)
@@ -109,7 +111,7 @@ proc checkEndBrackets*(ctx: var ParserContext) =
     parseError(ctx.getSpan, "unmatching brackets")
   ctx.next(2)
 
-proc parseValue*(ctx: var ParserContext): TempleNode =
+proc parseVariable*(ctx: var ParserContext): TempleNode =
   ctx.skipGarbage()
   if ctx.getchar != '$':
     parseError(ctx.getSpan, "not variable: requires `$`")
@@ -122,13 +124,37 @@ proc parseValue*(ctx: var ParserContext): TempleNode =
     if ctx.getchar == '.':
       names.add(curstr)
       curstr = ""
-    elif ctx.getchar in {' ', '}'}:
+    elif ctx.getchar in separateToken:
       break
     else:
       curstr &= ctx.getchar
     ctx.next()
   names.add(curstr)
   return TempleNode(span: span, kind: templeValue, names: names)
+
+proc parseCall*(ctx: var ParserContext): TempleNode =
+  ctx.skipGarbage()
+  let span = ctx.getSpan
+  let callname = ctx.parseIdent()
+  ctx.skipGarbage()
+  ctx.expect("(")
+  var args = newSeq[TempleNode]()
+  ctx.skipGarbage()
+  if ctx.getchar != ')':
+    args.add(ctx.parseValue())
+  while ctx.getchar != ')':
+    ctx.expect(",")
+    ctx.skipGarbage()
+    args.add(ctx.parseValue())
+  ctx.expect(")")
+  return TempleNode(span: span, kind: templeCall, callname: callname, args: args)
+
+proc parseValue*(ctx: var ParserContext): TempleNode =
+  ctx.skipGarbage()
+  if ctx.getchar == '$':
+    return ctx.parseVariable()
+  else:
+    return ctx.parseCall()
 
 #
 # statement parser
@@ -182,9 +208,6 @@ proc parseBlock*(ctx: var ParserContext): TempleNode =
   if ctx.istoken("-"):
     ctx.next()
     return TempleNode(span: ctx.getSpan, kind: templeStrip, stripnode: ctx.parseBlock())
-  elif ctx.istoken("$"):
-    result = ctx.parseValue()
-    ctx.checkEndBrackets()
   elif ctx.istoken("for"):
     return ctx.parseFor()
   elif ctx.istoken("if"):
@@ -194,7 +217,8 @@ proc parseBlock*(ctx: var ParserContext): TempleNode =
   elif ctx.istoken("define"):
     return ctx.parseDefine()
   else:
-    parseError(ctx.getSpan, "unknown expression")
+    result = ctx.parseValue()
+    ctx.checkEndBrackets()
 
 proc parseStmt*(ctx: var ParserContext): TempleNode =
   var body = newSeq[TempleNode]()

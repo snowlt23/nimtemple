@@ -4,8 +4,14 @@ import nimtemple
 
 suite "nimtemple":
   var tmpl = initTempleRenderer()
+  tmpl["vr"] = %* true
   tmpl["heroine"] = %* "Yuduki Yukari"
   tmpl["persons"] = %* ["Yukari", "Maki", "Akane", "Aoi"]
+  tmpl["isTrue"] = proc (node: JsonNode): JsonNode =
+    if node[0].bval:
+      %* "TRUE!"
+    else:
+      %* "FALSE!"
 
   test "value":
     check tmpl.renderSrc("test", "{{ $heroine }}") == "Yuduki Yukari"
@@ -37,4 +43,10 @@ Kotonoha Akane
 <title>ZUNDA</title>
 
 """
+  test "call":
+    check tmpl.renderSrc("test", """
+    {{ isTrue($vr) }}
+    """) == """
+    TRUE!
+    """
 

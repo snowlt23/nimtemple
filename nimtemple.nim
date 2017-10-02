@@ -4,7 +4,7 @@ import private.parser
 
 import json
 export json
-import strutils
+import strutils, sequtils
 import tables
 import options
 import os
@@ -14,16 +14,20 @@ type
     basepath*: string
     obj: JsonNode
     defines: Table[string, string]
+    calls: Table[string, proc (jnode: JsonNode): JsonNode]
     parentnodes: Option[TempleNode]
 
 proc initTempleRenderer*(): TempleRenderer =
   result.obj = newJObject()
   result.defines = initTable[string, string]()
+  result.calls = initTable[string, proc (jnode: JsonNode): JsonNode]()
 
 proc `[]`*(tmpl: TempleRenderer, key: string): JsonNode =
   tmpl.obj[key]
-proc `[]=`*(tmpl: TempleRenderer, key: string, val: JsonNode) =
+proc `[]=`*(tmpl: var TempleRenderer, key: string, val: JsonNode) =
   tmpl.obj[key] = val
+proc `[]=`*(tmpl: var TempleRenderer, key: string, fn: proc (jnode: JsonNode): JsonNode) =
+  tmpl.calls[key] = fn
 
 proc getVal*(tmpl: TempleRenderer, key: TempleNode): JsonNode =
   if key.kind == templeStrLit:
@@ -35,6 +39,16 @@ proc getVal*(tmpl: TempleRenderer, key: TempleNode): JsonNode =
     return val
   else:
     raise newException(TempleError, "couldn't find variable: $#" % key.debug)
+
+proc evalNode*(tmpl: var TempleRenderer, node: TempleNode): JsonNode =
+  case node.kind
+  of templeValue:
+    return tmpl.getVal(node)
+  of templeCall:
+    let args = %* node.args.mapIt(tmpl.evalNode(it))
+    return tmpl.calls[node.callname](args)
+  else:
+    raise newException(TempleError, "evalNode unsupported $#" % $node.kind)
 
 proc eval*(tmpl: var TempleRenderer, node: TempleNode): string =
   case node.kind
@@ -73,6 +87,8 @@ proc eval*(tmpl: var TempleRenderer, node: TempleNode): string =
       tmpl.eval(node.tcontent)
     else:
       tmpl.eval(node.fcontent)
+  of templeCall:
+    tmpl.evalNode(node).str
 
 proc renderSrc*(tmpl: var TempleRenderer, filename: string, src: string): string =
   tmpl.basepath = filename.splitPath().head

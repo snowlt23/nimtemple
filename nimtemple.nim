@@ -28,6 +28,8 @@ proc `[]=`*(tmpl: var TempleRenderer, key: string, val: JsonNode) =
   tmpl.obj[key] = val
 proc hasKey*(tmpl: TempleRenderer, key: string): bool =
   tmpl.obj.hasKey(key)
+proc del*(tmpl: var TempleRenderer, key: string) =
+  tmpl.obj.delete(key)
 
 proc addProc*(tmpl: var TempleRenderer, key: string, fn: proc (jnode: JsonNode): JsonNode) =
   tmpl.calls[key] = fn

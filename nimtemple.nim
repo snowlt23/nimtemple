@@ -26,15 +26,20 @@ proc `[]`*(tmpl: TempleRenderer, key: string): JsonNode =
   tmpl.obj[key]
 proc `[]=`*(tmpl: var TempleRenderer, key: string, val: JsonNode) =
   tmpl.obj[key] = val
-proc `[]=`*(tmpl: var TempleRenderer, key: string, fn: proc (jnode: JsonNode): JsonNode) =
+proc hasKey*(tmpl: TempleRenderer, key: string): bool =
+  tmpl.obj.hasKey(key)
+
+proc addProc*(tmpl: var TempleRenderer, key: string, fn: proc (jnode: JsonNode): JsonNode) =
   tmpl.calls[key] = fn
 
 proc getVal*(tmpl: TempleRenderer, key: TempleNode): JsonNode =
-  if key.kind == templeStrLit:
-    return tmpl[key.strval]
-  elif key.kind == templeValue:
+  if key.kind == templeValue:
+    if not tmpl.hasKey(key.names[0]):
+      return %* nil
     var val = tmpl[key.names[0]]
     for k in key.names[1..^1]:
+      if not val.hasKey(k):
+        return %* nil
       val = val[k]
     return val
   else:
@@ -42,6 +47,8 @@ proc getVal*(tmpl: TempleRenderer, key: TempleNode): JsonNode =
 
 proc evalNode*(tmpl: var TempleRenderer, node: TempleNode): JsonNode =
   case node.kind
+  of templeStrLit:
+    return %* node.strval
   of templeValue:
     return tmpl.getVal(node)
   of templeCall:
@@ -60,7 +67,11 @@ proc eval*(tmpl: var TempleRenderer, node: TempleNode): string =
       s &= tmpl.eval(elem)
     s
   of templeValue:
-    tmpl.getVal(node).str
+    let val = tmpl.getVal(node)
+    if val.kind == JString:
+      val.str
+    else:
+      $val
   of templeExtends:
     tmpl.parentnodes = some parseTemple(tmpl.basepath / node.filename.strval, readFile(tmpl.basepath / node.filename.strval))
     ""
@@ -88,7 +99,11 @@ proc eval*(tmpl: var TempleRenderer, node: TempleNode): string =
     else:
       tmpl.eval(node.fcontent)
   of templeCall:
-    tmpl.evalNode(node).str
+    let val = tmpl.evalNode(node)
+    if val.kind == JString:
+      val.str
+    else:
+      $val
 
 proc renderSrc*(tmpl: var TempleRenderer, filename: string, src: string): string =
   tmpl.basepath = filename.splitPath().head

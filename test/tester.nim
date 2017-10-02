@@ -1,17 +1,23 @@
 
 import unittest
 import nimtemple
+import future
 
 suite "nimtemple":
   var tmpl = initTempleRenderer()
   tmpl["vr"] = %* true
   tmpl["heroine"] = %* "Yuduki Yukari"
   tmpl["persons"] = %* ["Yukari", "Maki", "Akane", "Aoi"]
-  tmpl["isTrue"] = proc (node: JsonNode): JsonNode =
+  tmpl.addProc("isTrue") do (node: JsonNode) -> JsonNode:
     if node[0].bval:
       %* "TRUE!"
     else:
       %* "FALSE!"
+  tmpl.addProc("default") do (node: JsonNode) -> JsonNode:
+    if node[0].kind == JNull:
+      node[1]
+    else:
+      node[0]
 
   test "value":
     check tmpl.renderSrc("test", "{{ $heroine }}") == "Yuduki Yukari"
@@ -48,5 +54,16 @@ Kotonoha Akane
     {{ isTrue($vr) }}
     """) == """
     TRUE!
+    """
+  test "call str":
+    let src = """
+    {{ default($wtf, "DEFAULT!") }}
+    """
+    check tmpl.renderSrc("test", src) == """
+    DEFAULT!
+    """
+    tmpl["wtf"] = %* true
+    check tmpl.renderSrc("test", src) == """
+    true
     """
 

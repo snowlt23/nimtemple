@@ -5,7 +5,7 @@ import macros
 import strutils
 
 const LF* = '\x0A'
-const separateToken* = {' ', '{', '}', LF, '(', ')'}
+const separateToken* = {' ', '{', '}', LF, '(', ')', ','}
 
 type
   ParserContext* = object
@@ -153,6 +153,8 @@ proc parseValue*(ctx: var ParserContext): TempleNode =
   ctx.skipGarbage()
   if ctx.getchar == '$':
     return ctx.parseVariable()
+  if ctx.getchar == '"':
+    return ctx.parseStrLit()
   else:
     return ctx.parseCall()
 

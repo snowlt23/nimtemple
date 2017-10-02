@@ -91,6 +91,15 @@ proc parseIdent*(ctx: var ParserContext): string =
       result.add(ctx.getchar)
       ctx.next()
 
+proc parseIntLit*(ctx: var ParserContext): TempleNode =
+  ctx.skipGarbage()
+  let span = ctx.getSpan
+  var s = ""
+  while '0' <= ctx.getchar and ctx.getchar <= '9':
+    s.add(ctx.getchar)
+    ctx.next()
+  return TempleNode(span: span, kind: templeIntLit, intval: parseInt(s))
+
 proc parseStrLit*(ctx: var ParserContext): TempleNode =
   ctx.skipGarbage()
   let span = ctx.getSpan
@@ -153,7 +162,9 @@ proc parseValue*(ctx: var ParserContext): TempleNode =
   ctx.skipGarbage()
   if ctx.getchar == '$':
     return ctx.parseVariable()
-  if ctx.getchar == '"':
+  elif '0' <= ctx.getchar and ctx.getchar <= '9':
+    return ctx.parseIntLit()
+  elif ctx.getchar == '"':
     return ctx.parseStrLit()
   else:
     return ctx.parseCall()

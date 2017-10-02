@@ -19,8 +19,12 @@ suite "nimtemple":
     else:
       node[0]
 
-  test "value":
+  test "variable":
     check tmpl.renderSrc("test", "{{ $heroine }}") == "Yuduki Yukari"
+  test "string literal":
+    check tmpl.renderSrc("test", "{{ \"Hello\" }}") == "\"Hello\""
+  test "int literal":
+    check tmpl.renderSrc("test", "{{ 9 }}") == "9"
   test "for":
     check tmpl.renderSrc("test", """
     {{ for person in $persons }}

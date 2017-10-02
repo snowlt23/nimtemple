@@ -10,6 +10,7 @@ type
     linepos*: int
   TempleNodeKind* = enum
     templeStrLit
+    templeIntLit
     templeValue
     templeStmt
     templeDefine
@@ -25,6 +26,8 @@ type
     case kind*: TempleNodeKind
     of templeStrLit:
       strval*: string
+    of templeIntLit:
+      intval*: int
     of templeValue:
       names*: seq[string]
     of templeStmt:
@@ -53,7 +56,9 @@ type
 proc debug*(node: TempleNode): string =
   case node.kind
   of templeStrLit:
-    "(kind: templeStr, strval: $#)" % node.strval
+    "(kind: templeStrLit, strval: $#)" % node.strval
+  of templeIntLit:
+    "(kind: templeIntLit, intval: $#)" % $node.intval
   of templeValue:
     "(kind: templeValue, names: $#)" % node.names.join(".")
   of templeStmt:

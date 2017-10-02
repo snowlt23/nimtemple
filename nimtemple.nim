@@ -51,6 +51,8 @@ proc evalNode*(tmpl: TempleRenderer, node: TempleNode): JsonNode =
   case node.kind
   of templeStrLit:
     return %* node.strval
+  of templeIntLit:
+    return %* node.intval
   of templeValue:
     return tmpl.getVal(node)
   of templeCall:
@@ -63,6 +65,8 @@ proc eval*(tmpl: var TempleRenderer, node: TempleNode): string =
   case node.kind
   of templeStrLit:
     "\"" & node.strval & "\""
+  of templeIntLit:
+    $node.intval
   of templeStmt:
     var s = ""
     for elem in node.sons:

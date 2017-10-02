@@ -210,13 +210,13 @@ proc parseBlock*(ctx: var ParserContext): TempleNode =
   if ctx.istoken("-"):
     ctx.next()
     return TempleNode(span: ctx.getSpan, kind: templeStrip, stripnode: ctx.parseBlock())
-  elif ctx.istoken("for"):
+  elif ctx.istoken("for "):
     return ctx.parseFor()
-  elif ctx.istoken("if"):
+  elif ctx.istoken("if "):
     return ctx.parseIf()
-  elif ctx.istoken("extends"):
+  elif ctx.istoken("extends "):
     return ctx.parseExtends()
-  elif ctx.istoken("define"):
+  elif ctx.istoken("define "):
     return ctx.parseDefine()
   else:
     result = ctx.parseValue()

@@ -32,6 +32,8 @@ proc hasKey*(tmpl: TempleRenderer, key: string): bool =
 proc addProc*(tmpl: var TempleRenderer, key: string, fn: proc (jnode: JsonNode): JsonNode) =
   tmpl.calls[key] = fn
 
+proc evalNode*(tmpl: TempleRenderer, node: TempleNode): JsonNode
+
 proc getVal*(tmpl: TempleRenderer, key: TempleNode): JsonNode =
   if key.kind == templeValue:
     if not tmpl.hasKey(key.names[0]):
@@ -43,9 +45,9 @@ proc getVal*(tmpl: TempleRenderer, key: TempleNode): JsonNode =
       val = val[k]
     return val
   else:
-    raise newException(TempleError, "couldn't find variable: $#" % key.debug)
+    return tmpl.evalNode(key)
 
-proc evalNode*(tmpl: var TempleRenderer, node: TempleNode): JsonNode =
+proc evalNode*(tmpl: TempleRenderer, node: TempleNode): JsonNode =
   case node.kind
   of templeStrLit:
     return %* node.strval

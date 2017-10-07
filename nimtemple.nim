@@ -119,6 +119,8 @@ proc renderSrc*(tmpl: var TempleRenderer, filename: string, src: string): string
   result = tmpl.eval(node)
   if tmpl.parentnodes.isSome:
     result = tmpl.eval(tmpl.parentnodes.get)
+  tmpl.defines = initTable[string, string]()
+  tmpl.parentnodes = none(TempleNode)
 proc renderFile*(tmpl: var TempleRenderer, filename: string): string =
   tmpl.renderSrc(filename, readFile(filename))
 
